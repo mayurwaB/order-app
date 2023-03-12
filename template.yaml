@@ -95,8 +95,33 @@ Resources:
           Effect: Allow
           Resource:
             - !GetAtt GetOrders.Arn
+            - !GetAtt PostOrders.Arn
       Roles: 
         - Ref: "ApiGwExecutionRole"
+        
+  PostOrders:
+    Type: AWS::Serverless::Function 
+    Properties:
+      CodeUri: src/order-api/functions/post-orders/
+      Handler: app.postOrders
+      Runtime: nodejs14.x
+      Environment:
+        Variables:
+          ORDER_TABLE: !Ref OrderTable
+      Policies:
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:PutItem
+            Resource:
+              - !Sub 
+                - 'arn:aws:dynamodb:*:*:table/${Table}'
+                - { Table: !Ref OrderTable }
+          - Effect: Allow
+            Action:
+              - logs:*
+            Resource:
+              - "*"            
               
 Outputs:
   DynamoDBTableName:
@@ -110,3 +135,7 @@ Outputs:
   OrderApiEndpoint:
     Description: "API Gateway endpoint URL for Dev stage for Order Get function"
     Value: !Sub "https://${OrderApi}.execute-api.${AWS::Region}.amazonaws.com/Dev/orders/"  
+    
+  PostOrders:
+    Description: "PostOrders Lambda Function ARN"
+    Value: !GetAtt PostOrders.Arn    
