@@ -22,38 +22,41 @@ const getCurrentDate = () => {
 }
 
 exports.postOrders = async (event) => {
-    let formattedDateNow = getCurrentDate();
-    const { body } = event;   // It destructures the body payload from event. 
-    let parsedBody = JSON.parse(body); // It parses the JSON payload to java script object 
-    
-    // The item contains fully order Item. 
-    let item = {
-        user_id : "static_user",   
-        id: uuid.v4(),             
-        name: parsedBody.name, 
-        restaurantId: parsedBody.restaurantId, 
-        quantity: parsedBody.quantity,
-        createdAt: formattedDateNow.toString(),
-        orderStatus: DEFAULT_ORDER_STATUS,
-    }
-    
-    let params = {
-        TableName : tableName,
-        Item: item
-    }; 
+  let formattedDateNow = getCurrentDate()
 
-    // We use 'put' operator to put item to Dynamodb.
-    try {
-        const data = await docClient.put(params).promise()
-        console.log("Success for putting Item")
-        console.log(data)
-    } catch (err) {
-        console.log("Failure", err.message)
+  // We are reading the records from SQS in a loop
+  for (const record of event.Records) {
+    const { messageId, body } = record // Now destructures the MessageId and Body from event.
+    let parsedBody = JSON.parse(body) // Parses the Json to Javascript object
+
+    // Instead of ussing uuid in Id, now we are passing MessageId to Id parameter in Item payload
+    let item = {
+      user_id: "static_user",
+      id: messageId,
+      name: parsedBody.data.name,
+      restaurantId: parsedBody.data.restaurantId,
+      quantity: parsedBody.data.quantity,
+      createdAt: formattedDateNow.toString(),
+      orderStatus: DEFAULT_ORDER_STATUS,
     }
+
+    let params = {
+      TableName: tableName,
+      Item: item,
+    }
+
+    // Use Put method to put items into Dynamodb
+    try {
+      const data = await docClient.put(params).promise()
+      console.log("Success for putting Item")
+      console.log(data)
+    } catch (err) {
+      console.log("Failure", err.message)
+    }
+  }
+    
     const response = {
       statusCode: 200,
-      body: JSON.stringify(item)
-
     };
     return response;
 }

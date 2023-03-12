@@ -92,14 +92,14 @@ Resources:
         Statement: 
           Action:
             - lambda:*
+            - sqs:SendMessage
           Effect: Allow
           Resource:
             - !GetAtt GetOrders.Arn
-            - !GetAtt PostOrders.Arn
+            - !GetAtt OrderQueue.Arn
             - !GetAtt GetSingleOrder.Arn
             - !GetAtt UpdateOrder.Arn
             - !GetAtt DeleteOrder.Arn
-
       Roles: 
         - Ref: "ApiGwExecutionRole"
         
@@ -109,6 +109,12 @@ Resources:
       CodeUri: src/order-api/functions/post-orders/
       Handler: app.postOrders
       Runtime: nodejs14.x
+      Events:
+        SQSEventSource:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt OrderQueue.Arn
+            BatchSize: 10      
       Environment:
         Variables:
           ORDER_TABLE: !Ref OrderTable
@@ -176,7 +182,7 @@ Resources:
               - "*"   
               
   DeleteOrder:
-    Type: AWS::Serverless::Function 
+    Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/order-api/functions/delete-order/
       Handler: app.deleteOrder
@@ -197,8 +203,18 @@ Resources:
             Action:
               - logs:*
             Resource:
-              - "*"                 
+              - "*"      
               
+  OrderQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt OrderDLQueue.Arn
+        maxReceiveCount: 5
+  
+  OrderDLQueue:
+    Type: AWS::SQS::Queue             
+                
 Outputs:
   DynamoDBTableName:
     Description: "DynamoDB Table Name"
@@ -227,3 +243,11 @@ Outputs:
   DeleteOrder:
     Description: "DeleteOrder Lambda Function ARN"
     Value: !GetAtt DeleteOrder.Arn    
+    
+  OrderQueueUrl:
+    Description: "URL of order queue"
+    Value: !Ref OrderQueue
+    
+  OrderDLQueueUrl:
+    Description: "URL of order dead-letter queue"
+    Value: !Ref OrderDLQueue    
