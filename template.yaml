@@ -96,6 +96,10 @@ Resources:
           Resource:
             - !GetAtt GetOrders.Arn
             - !GetAtt PostOrders.Arn
+            - !GetAtt GetSingleOrder.Arn
+            - !GetAtt UpdateOrder.Arn
+            - !GetAtt DeleteOrder.Arn
+
       Roles: 
         - Ref: "ApiGwExecutionRole"
         
@@ -121,7 +125,79 @@ Resources:
             Action:
               - logs:*
             Resource:
-              - "*"            
+              - "*"     
+              
+  GetSingleOrder:
+    Type: AWS::Serverless::Function 
+    Properties:
+      CodeUri: src/order-api/functions/get-single-order/
+      Handler: app.getOrderById
+      Runtime: nodejs14.x
+      Environment:
+        Variables:
+          ORDER_TABLE: !Ref OrderTable
+      Policies:
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:GetItem
+            Resource:
+              - !Sub 
+                - 'arn:aws:dynamodb:*:*:table/${Table}'
+                - { Table: !Ref OrderTable }
+          - Effect: Allow
+            Action:
+              - logs:*
+            Resource:
+              - "*"  
+              
+  UpdateOrder:
+    Type: AWS::Serverless::Function 
+    Properties:
+      CodeUri: src/order-api/functions/update-order/
+      Handler: app.updateOrder
+      Runtime: nodejs14.x
+      Environment:
+        Variables:
+          ORDER_TABLE: !Ref OrderTable
+      Policies:
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:UpdateItem
+            Resource:
+              - !Sub 
+                - 'arn:aws:dynamodb:*:*:table/${Table}'
+                - { Table: !Ref OrderTable }
+          - Effect: Allow
+            Action:
+              - logs:*
+            Resource:
+              - "*"   
+              
+  DeleteOrder:
+    Type: AWS::Serverless::Function 
+    Properties:
+      CodeUri: src/order-api/functions/delete-order/
+      Handler: app.deleteOrder
+      Runtime: nodejs14.x
+      Environment:
+        Variables:
+          ORDER_TABLE: !Ref OrderTable
+      Policies:
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:DeleteItem
+            Resource:
+              - !Sub 
+                - 'arn:aws:dynamodb:*:*:table/${Table}'
+                - { Table: !Ref OrderTable }
+          - Effect: Allow
+            Action:
+              - logs:*
+            Resource:
+              - "*"                 
               
 Outputs:
   DynamoDBTableName:
@@ -139,3 +215,15 @@ Outputs:
   PostOrders:
     Description: "PostOrders Lambda Function ARN"
     Value: !GetAtt PostOrders.Arn    
+    
+  GetSingleOrder:
+    Description: "GetSingleOrder Lambda Function ARN"
+    Value: !GetAtt GetSingleOrder.Arn
+  
+  UpdateOrder:
+    Description: "UpdateOrder Lambda Function ARN"
+    Value: !GetAtt UpdateOrder.Arn 
+    
+  DeleteOrder:
+    Description: "DeleteOrder Lambda Function ARN"
+    Value: !GetAtt DeleteOrder.Arn    
