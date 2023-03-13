@@ -30,8 +30,10 @@ exports.updateOrder = async (event) => {
     let parsedBody = JSON.parse(body);  // It parses the JSON payload to java script object
 
     let item = {
-        user_id : "static_user",   
-        id: orderId
+      user_id:
+        event.requestContext.authorizer.claims["cognito:username"] ||
+        event.requestContext.authorizer.claims.username, // As we are using Lambda proxy from AWS ApiGateway, the cognito username will directly pass to here.
+      id: orderId,
     }
 
     // The DynamoDB Update expression requires following parameters
