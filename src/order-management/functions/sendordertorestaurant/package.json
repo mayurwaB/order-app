@@ -1,16 +1,12 @@
 {
-  "name": "post-orders",
+  "name": "sendordertorestaurant",
   "version": "1.0.0",
   "description": "",
-  "main": "app.js",
+  "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "@aws-sdk/client-sfn": "^3.289.0",
-    "node-uuid": "^1.4.8"
-  }
+  "license": "ISC"
 }

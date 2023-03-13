@@ -117,21 +117,21 @@ Resources:
             BatchSize: 10      
       Environment:
         Variables:
-          ORDER_TABLE: !Ref OrderTable
+          STATE_MACHINE_ARN: !Ref OrderManagementSFN
       Policies:
         Statement:
           - Effect: Allow
             Action:
-              - dynamodb:PutItem
-            Resource:
-              - !Sub 
-                - 'arn:aws:dynamodb:*:*:table/${Table}'
-                - { Table: !Ref OrderTable }
-          - Effect: Allow
-            Action:
               - logs:*
             Resource:
-              - "*"     
+              - "*"    
+          - Effect: Allow
+            Action:
+              - states:StartExecution
+            Resource:
+              - !Sub 
+                - '${StateMachine}'
+                - { StateMachine: !Ref OrderManagementSFN } 
               
   GetSingleOrder:
     Type: AWS::Serverless::Function 
@@ -213,7 +213,79 @@ Resources:
         maxReceiveCount: 5
   
   OrderDLQueue:
-    Type: AWS::SQS::Queue             
+    Type: AWS::SQS::Queue   
+    
+  ProcessPaymentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/order-management/functions/process-payment/
+      Handler: app.processPayment
+      Runtime: nodejs14.x    
+                
+  SendOrderToRestaurantFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/order-management/functions/sendordertorestaurant/
+      Handler: app.sendOrderToRestaurant
+      Runtime: nodejs14.x
+
+  ManageStateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/order-management/functions/managestate/
+      Handler: app.manageState
+      Runtime: nodejs14.x
+      Environment:
+        Variables:
+          ORDER_TABLE: !Ref OrderTable
+          SNS_TOPIC_ARN: !Ref OrderTopic
+      Policies:
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:Query 
+              - dynamodb:Scan
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+            Resource:
+              - !Sub 
+                - 'arn:aws:dynamodb:*:*:table/${Table}'
+                - { Table: !Ref OrderTable }
+          - Effect: Allow
+            Action:
+              - logs:*
+            Resource:
+              - "*"    
+          - Effect: Allow
+            Action:
+              - SNS:Publish
+            Resource:
+              - "*"    
+  
+  OrderTopic:
+    Type: AWS::SNS::Topic
+    Properties: 
+      Subscription: 
+        - Endpoint: "bodlexnig@outlook.com"
+          Protocol: "email"
+      TopicName: "order-topic"
+      
+  OrderManagementSFN:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      DefinitionUri: src/order-management/statemachine/process-order.asl.json
+      DefinitionSubstitutions:
+        ManageStateArn: !GetAtt ManageStateFunction.Arn
+        ProcessPaymentArn: !GetAtt ProcessPaymentFunction.Arn
+        SendOrderToRestaurantArn: !GetAtt SendOrderToRestaurantFunction.Arn
+      Policies: 
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ManageStateFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ProcessPaymentFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref SendOrderToRestaurantFunction
                 
 Outputs:
   DynamoDBTableName:
